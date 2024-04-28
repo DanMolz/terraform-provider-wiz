@@ -586,17 +586,7 @@ type Connector struct {
 	Status            string          `json:"status"` // enum ConnectorStatus
 }
 
-// OutpostAWSConfig struct -- updates
-type OutpostAWSConfig struct {
-	RoleARN           string `json:"roleARN"`
-	ExternalID        string `json:"externalID"`
-	AccessKey         string `json:"accessKey"`
-	SecretKey         string `json:"secretKey"`
-	StateBucketName   string `json:"stateBucketName,omitempty"`
-	ResultsBucketName string `json:"resultsBucketName,omitempty"`
-	SettingsRegion    string `json:"settingsRegion,omitempty"`
-	DisableNatGateway bool   `json:"disableNatGateway,omitempty"`
-}
+
 
 // ConnectorConfigGCP struct -- updates
 type ConnectorConfigGCP struct {
