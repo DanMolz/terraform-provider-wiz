@@ -786,7 +786,7 @@ func resourceWizProjectRead(ctx context.Context, d *schema.ResourceData, m inter
 	        isFolder
 	        ancestorProjects {
 	          id
-	        }	
+	        }
 	        description
 	        identifiers
 	        slug

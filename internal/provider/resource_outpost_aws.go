@@ -20,24 +20,19 @@ func resourceWizOutpostAWS() *schema.Resource {
 		Schema: map[string]*schema.Schema{
 			"id": {
 				Type:        schema.TypeString,
-				Computed:    true,
 				Description: "Wiz identifier for the Output.",
+				Computed:    true,
 			},
 			"name": {
 				Type:        schema.TypeString,
-				Required:    true,
 				Description: "Name of the Output.",
-			},
-			"service_type": {
-				Type:        schema.TypeString,
-				Optional:    true,
-				Description: "Service type of the Outpost.",
+				Required:    true,
 			},
 			"enabled": {
 				Type:        schema.TypeBool,
+				Description: "Whether to enable the Outpost.",
 				Optional:    true,
 				Default:     true,
-				Description: "Whether to enable the Outpost.",
 			},
 			"self_managed": {
 				Type:        schema.TypeBool,
@@ -45,40 +40,52 @@ func resourceWizOutpostAWS() *schema.Resource {
 				Optional:    true,
 				Default:     false,
 			},
-			"role_arn": {
+			"orchestrator_role_arn": {
 				Type:        schema.TypeString,
-				Description: "The AWS role arn for Outpost Bucket.",
-				Computed:    true,
+				Description: "The role is used to setup and monitor the Outpost deployment in-account",
+				Required:    true,
 			},
-			"state_blucket_name": {
+			"configuration_bucket_name": {
 				Type:        schema.TypeString,
-				Description: "The Bucket name for the Outpost state.",
-				Computed:    true,
+				Description: "The Configuration Bucket is used to configure the EKS Clusters running as part of the Outpost Connector",
+				Required:    true,
 			},
-			"blucket_region": {
+			"configuration_bucket_region": {
 				Type:        schema.TypeString,
-				Description: "The Bucket region for the Outpost state.",
-				Computed:    true,
+				Description: "The region where the Configuration Bucket has been created",
+				Required:    true,
 			},
-			"manual_network": {
+			"results_bucket_name": {
+				Type:        schema.TypeString,
+				Description: "The region where the Configuration Bucket has been created",
+				Optional:    true,
+			},
+			"disable_nat_gateway": {
+				Type:        schema.TypeBool,
+				Description: "Whether to disable NAT Gateway.",
+				Optional:    true,
+				Default:     false,
+			},
+			"manual_network_management": {
 				Type:        schema.TypeBool,
 				Description: "Whether to enable manual network configuration.",
 				Optional:    true,
+				Default:     false,
 			},
 			"kubernetes_logging_enabled": {
 				Type:        schema.TypeBool,
 				Description: "Whether to enable Kubernetes Logging.",
-				Optional:    true,
+				Computed:    true,
 			},
 			"kubernetes_cloud_monitoring_enabled": {
 				Type:        schema.TypeBool,
 				Description: "Whether to enable Kubernetes Cloud Monitoring.",
-				Optional:    true,
+				Computed:    true,
 			},
 			"allowed_regions": {
 				Type:        schema.TypeList,
 				Description: "List of allowed regions for the Outpost.",
-				Computed:    true,
+				Optional:    true,
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 				},
@@ -94,13 +101,13 @@ func resourceWizOutpostAWS() *schema.Resource {
 	}
 }
 
-// CreateOutpostAWS struct
-type CreateOutpostAWS struct {
-	CreateOutpostAWS wiz.CreateOutpostAWSPayload `json:"createOutpostAWS"`
+// CreateOutpost struct
+type CreateOutpost struct {
+	CreateOutpost wiz.CreateOutpostPayload `json:"createOutpost"`
 }
 
 func resourceWizOutpostAWSCreate(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-	tflog.Info(ctx, "resourceWizOutpostAWSCreate called...")
+	tflog.Info(ctx, "resourceWizOutpostCreate called...")
 
 	// define the graphql query
 	query := `mutation CreateOutpost($input: CreateOutpostInput!) {
@@ -112,33 +119,52 @@ func resourceWizOutpostAWSCreate(ctx context.Context, d *schema.ResourceData, m 
   }`
 
 	// populate the graphql variables
-	vars := &wiz.CreateOutpostAWSInput{}
+	vars := &wiz.CreateOutpostInput{}
 	vars.Name = d.Get("name").(string)
+	vars.ServiceType = "AWS"
+	enabled := d.Get("enabled").(bool)
+	vars.Enabled = &enabled
+	selfManaged := d.Get("self_managed").(bool)
+	vars.SelfManaged = &selfManaged
+	vars.Config.AwsConfig.RoleARN = d.Get("orchestrator_role_arn").(string)
+	vars.Config.AwsConfig.StateBucketName = d.Get("configuration_bucket_name").(string)
+	vars.Config.AwsConfig.SettingsRegion = d.Get("configuration_bucket_region").(string)
+	vars.Config.AwsConfig.ResultsBucketName = d.Get("results_bucket_name").(string)
+	disableNatGateway := d.Get("disable_nat_gateway").(bool)
+	vars.Config.AwsConfig.DisableNatGateway = &disableNatGateway
+	manualNetwork := d.Get("manual_network_management").(bool)
+	vars.ManagedConfig.ManualNetwork = &manualNetwork
+	kubernetesLoggingEnabled := d.Get("kubernetes_logging_enabled").(bool)
+	vars.ManagedConfig.KubernetesLoggingEnabled = &kubernetesLoggingEnabled
+	kubernetesCloudMonitoringEnabled := d.Get("kubernetes_cloud_monitoring_enabled").(bool)
+	vars.ManagedConfig.KubernetesCloudMonitoringEnabled = &kubernetesCloudMonitoringEnabled
+	vars.AllowedRegions = utils.ConvertListToString(d.Get("allowed_regions").([]interface{}))
 
 	// process the request
-	data := &CreateOutpostAWS{}
-	requestDiags := client.ProcessRequest(ctx, m, vars, data, query, "control", "create")
+	data := &CreateOutpost{}
+	requestDiags := client.ProcessRequest(ctx, m, vars, data, query, "outpost", "create")
 	diags = append(diags, requestDiags...)
 	if len(diags) > 0 {
 		return diags
 	}
 
 	// set the id
-	d.SetId(data.CreateOutpostAWS.OutpostAWS.ID)
+	d.SetId(data.CreateOutpost.Outpost.ID)
 
 	return resourceWizOutpostAWSRead(ctx, d, m)
 }
 
-// ReadOutpostAWSPayload struct
-type ReadOutpostAWSPayload struct {
-	OutpostAWS wiz.OutpostAWS `json:"outpostAWS"`
+// ReadOutpostPayload struct
+type ReadOutpostPayload struct {
+	Outpost wiz.Outpost `json:"outpost"`
 }
 
 func resourceWizOutpostAWSRead(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-	tflog.Info(ctx, "resourceWizOutpostAWSRead called...")
+	tflog.Info(ctx, "resourceWizOutpostRead called...")
 
 	// check the id
 	if d.Id() == "" {
+		tflog.Debug(ctx, "outpost ID Missing")
 		return nil
 	}
 
@@ -297,26 +323,70 @@ func resourceWizOutpostAWSRead(ctx context.Context, d *schema.ResourceData, m in
 	vars := &internal.QueryVariables{}
 	vars.ID = d.Id()
 
+	tflog.Debug(ctx, "resourceWizOutpostRead debug 1...")
+
 	// process the request
-	// this query returns http 200 with a payload that contains errors and a null data body
-	// error message: oops! an internal error has occurred. for reference purposes, this is your request id
-	data := &ReadOutpostAWSPayload{}
-	requestDiags := client.ProcessRequest(ctx, m, vars, data, query, "control", "read")
+	data := &ReadOutpostPayload{}
+	requestDiags := client.ProcessRequest(ctx, m, vars, data, query, "outpost", "read")
 	diags = append(diags, requestDiags...)
 	if len(diags) > 0 {
-		tflog.Info(ctx, "Error from API call, checking if resource was deleted outside Terraform.")
-		if data.OutpostAWS.ID == "" {
-			tflog.Debug(ctx, fmt.Sprintf("Response: (%T) %s", data, utils.PrettyPrint(data)))
-			tflog.Info(ctx, "Resource not found, marking as new.")
-			d.SetId("")
-			d.MarkNewResource()
-			return nil
-		}
 		return diags
 	}
 
+	tflog.Info(ctx, "resourceWizOutpostRead debug 3...")
+
 	// set the resource parameters
-	err := d.Set("name", data.OutpostAWS.Name)
+	err := d.Set("name", data.Outpost.Name)
+	if err != nil {
+		return append(diags, diag.FromErr(err)...)
+	}
+
+	err = d.Set("enabled", data.Outpost.Enabled)
+	if err != nil {
+		return append(diags, diag.FromErr(err)...)
+	}
+
+	err = d.Set("self_managed", data.Outpost.SelfManaged)
+	if err != nil {
+		return append(diags, diag.FromErr(err)...)
+	}
+
+	err = d.Set("orchestrator_role_arn", data.Outpost.Config.RoleARN)
+	if err != nil {
+		return append(diags, diag.FromErr(err)...)
+	}
+
+	err = d.Set("configuration_bucket_name", data.Outpost.Config.StateBucketName)
+	if err != nil {
+		return append(diags, diag.FromErr(err)...)
+	}
+
+	err = d.Set("configuration_bucket_region", data.Outpost.Config.SettingsRegion)
+	if err != nil {
+		return append(diags, diag.FromErr(err)...)
+	}
+
+	err = d.Set("results_bucket_name", data.Outpost.Config.ResultsBucketName)
+	if err != nil {
+		return append(diags, diag.FromErr(err)...)
+	}
+
+	err = d.Set("disable_nat_gateway", data.Outpost.Config.DisableNatGateway)
+	if err != nil {
+		return append(diags, diag.FromErr(err)...)
+	}
+
+	err = d.Set("manual_network_management", data.Outpost.ManagedConfig.ManualNetwork)
+	if err != nil {
+		return append(diags, diag.FromErr(err)...)
+	}
+
+	err = d.Set("kubernetes_logging_enabled", data.Outpost.ManagedConfig.KubernetesLoggingEnabled)
+	if err != nil {
+		return append(diags, diag.FromErr(err)...)
+	}
+
+	err = d.Set("kubernetes_cloud_monitoring_enabled", data.Outpost.ManagedConfig.KubernetesCloudMonitoringEnabled)
 	if err != nil {
 		return append(diags, diag.FromErr(err)...)
 	}
@@ -324,13 +394,13 @@ func resourceWizOutpostAWSRead(ctx context.Context, d *schema.ResourceData, m in
 	return diags
 }
 
-// UpdateOutpostAWS struct
-type UpdateOutpostAWS struct {
-	UpdateOutpostAWS wiz.UpdateOutpostAWSPayload `json:"updateOutpostAWS"`
+// UpdateOutpost struct
+type UpdateOutpost struct {
+	UpdateOutpost wiz.UpdateOutpostPayload `json:"updateOutpost"`
 }
 
 func resourceWizOutpostAWSUpdate(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-	tflog.Info(ctx, "resourceWizOutpostAWSUpdate called...")
+	tflog.Info(ctx, "resourceWizOutpostUpdate called...")
 
 	// check the id
 	if d.Id() == "" {
@@ -406,7 +476,7 @@ func resourceWizOutpostAWSUpdate(ctx context.Context, d *schema.ResourceData, m 
     }`
 
 	// populate the graphql variables
-	vars := &wiz.UpdateOutpostAWSInput{}
+	vars := &wiz.UpdateOutpostInput{}
 	vars.ID = d.Id()
 
 	// these can optionally be included in the patch
@@ -418,8 +488,8 @@ func resourceWizOutpostAWSUpdate(ctx context.Context, d *schema.ResourceData, m 
 	}
 
 	// process the request
-	data := &UpdateOutpostAWS{}
-	requestDiags := client.ProcessRequest(ctx, m, vars, data, query, "control", "update")
+	data := &UpdateOutpost{}
+	requestDiags := client.ProcessRequest(ctx, m, vars, data, query, "outpost", "update")
 	diags = append(diags, requestDiags...)
 	if len(diags) > 0 {
 		return diags
@@ -428,13 +498,13 @@ func resourceWizOutpostAWSUpdate(ctx context.Context, d *schema.ResourceData, m 
 	return resourceWizOutpostAWSRead(ctx, d, m)
 }
 
-// DeleteOutpostAWS struct
-type DeleteOutpostAWS struct {
-	DeleteOutpostAWS wiz.DeleteOutpostAWSPayload `json:"deleteOutpostAWS"`
+// DeleteOutpost struct
+type DeleteOutpost struct {
+	DeleteOutpost wiz.DeleteOutpostPayload `json:"deleteOutpost"`
 }
 
 func resourceWizOutpostAWSDelete(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-	tflog.Info(ctx, "resourceWizOutpostAWSDelete called...")
+	tflog.Info(ctx, "resourceWizOutpostDelete called...")
 
 	// check the id
 	if d.Id() == "" {
@@ -442,25 +512,25 @@ func resourceWizOutpostAWSDelete(ctx context.Context, d *schema.ResourceData, m 
 	}
 
 	// define the graphql query
-	query := `mutation DeleteControl (
-	    $input: DeleteControlInput!
-	) {
-	    deleteControl(
-		input: $input
-	    ) {
-		_stub
-	    }
-	}`
+	query := `mutation UninstallOutpost($input: UninstallOutpostInput!) {
+      uninstallOutpost(input: $input) {
+        outpost {
+          id
+          status
+        }
+      }
+    }`
 
 	// populate the graphql variables
-	vars := &wiz.DeleteOutpostAWSInput{}
+	vars := &wiz.DeleteOutpostInput{}
 	vars.ID = d.Id()
 
 	// process the request
-	data := &UpdateOutpostAWS{}
-	requestDiags := client.ProcessRequest(ctx, m, vars, data, query, "control", "delete")
+	data := &DeleteOutpost{}
+	requestDiags := client.ProcessRequest(ctx, m, vars, data, query, "outpost", "delete")
 	diags = append(diags, requestDiags...)
 	if len(diags) > 0 {
+		tflog.Debug(ctx, fmt.Sprintf("Diags Count: %d", len(diags)))
 		return diags
 	}
 

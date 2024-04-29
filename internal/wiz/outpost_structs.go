@@ -4,13 +4,13 @@ import (
 	"encoding/json"
 )
 
-// OutpostAWS struct
-type OutpostAWS struct {
+// Outpost struct
+type Outpost struct {
 	ID                     string               `json:"id"`
 	Name                   string               `json:"name"`
 	Enabled                bool                 `json:"enabled"`
 	ServiceType            string               `json:"serviceType"`
-	AllowedRegions         any                  `json:"allowedRegions"`
+	AllowedRegions         []string             `json:"allowedRegions"`
 	SelfManaged            bool                 `json:"selfManaged"`
 	ExternalInternetAccess string               `json:"externalInternetAccess"`
 	SelfManagedConfig      any                  `json:"selfManagedConfig"`
@@ -25,7 +25,7 @@ type OutpostAWS struct {
 	} `json:"addedBy"`
 	Clusters     []OutpostCluster    `json:"clusters"`
 	CustomConfig OutpostCustomConfig `json:"customConfig"`
-	Config       OutpostAWSConfig    `json:"config"`
+	Config       OutpostConfig       `json:"config"`
 }
 
 // OutpostCluster struct
@@ -69,8 +69,8 @@ type OutpostManagedConfig struct {
 	KubernetesCloudMonitoringEnabled bool `json:"kubernetesCloudMonitoringEnabled"`
 }
 
-// OutpostAWSConfig struct
-type OutpostAWSConfig struct {
+// OutpostConfig struct
+type OutpostConfig struct {
 	RoleARN           string `json:"roleARN"`
 	ExternalID        string `json:"externalID"`
 	StateBucketName   string `json:"stateBucketName,omitempty"`
@@ -82,56 +82,70 @@ type OutpostAWSConfig struct {
 	SubscriptionID    string `json:"subscriptionID"`
 }
 
-// CreateOutpostAWSInput struct
-type CreateOutpostAWSInput struct {
-	Name        string `json:"name"`
-	ServiceType string `json:"serviceType"`
-	Enabled     bool   `json:"enabled"`
-	SelfManaged string `json:"selfManaged"`
-	Config      struct {
-		AwsConfig struct {
-			SettingsRegion  string `json:"settingsRegion"`
-			StateBucketName string `json:"stateBucketName"`
-			RoleARN         string `json:"roleARN"`
-		} `json:"awsConfig"`
-	} `json:"config"`
-	ManagedConfig struct {
-		ManualNetwork                    bool `json:"manualNetwork"`
-		KubernetesLoggingEnabled         bool `json:"kubernetesLoggingEnabled"`
-		KubernetesCloudMonitoringEnabled bool `json:"kubernetesCloudMonitoringEnabled"`
-	} `json:"managedConfig"`
-	AllowedRegions string `json:"allowedRegions"`
+// CreateOutpostInput struct
+type CreateOutpostInput struct {
+	Name           string                    `json:"name,omitempty"`
+	ServiceType    string                    `json:"serviceType,omitempty"`
+	Enabled        *bool                     `json:"enabled,omitempty"`
+	SelfManaged    *bool                     `json:"selfManaged,omitempty"`
+	Config         OutpostConfigInput        `json:"config"`
+	ManagedConfig  OutpostManagedConfigInput `json:"managedConfig"`
+	AllowedRegions []string                  `json:"allowedRegions,omitempty"`
 }
 
-// CreateOutpostAWSPayload struct
-type CreateOutpostAWSPayload struct {
-	OutpostAWS OutpostAWS `json:"outpostAWS,omitempty"`
+type OutpostConfigInput struct {
+	AwsConfig OutpostAWSConfigInput `json:"awsConfig"`
 }
 
-// DeleteControlInput struct
-type DeleteOutpostAWSInput struct {
+// OutpostAWSConfig struct
+type OutpostAWSConfigInput struct {
+	RoleARN           string `json:"roleARN,omitempty"`
+	ExternalID        string `json:"externalID,omitempty"`
+	StateBucketName   string `json:"stateBucketName,omitempty"`
+	SettingsRegion    string `json:"settingsRegion,omitempty"`
+	AccessKey         string `json:"accessKey,omitempty"`
+	SecretKey         string `json:"secretKey,omitempty"`
+	DisableNatGateway *bool  `json:"disableNatGateway,omitempty"`
+	ResultsBucketName string `json:"resultsBucketName,omitempty"`
+	SubscriptionID    string `json:"subscriptionID,omitempty"`
+}
+
+// OutpostManagedConfig struct
+type OutpostManagedConfigInput struct {
+	KubernetesLoggingEnabled         *bool `json:"kubernetesLoggingEnabled"`
+	ManualNetwork                    *bool `json:"manualNetwork"`
+	KubernetesCloudMonitoringEnabled *bool `json:"kubernetesCloudMonitoringEnabled"`
+}
+
+// CreateOutpostPayload struct
+type CreateOutpostPayload struct {
+	Outpost Outpost `json:"outpost,omitempty"`
+}
+
+// DeleteOutpostInput struct
+type DeleteOutpostInput struct {
 	ID string `json:"id"`
 }
 
-// DeleteOutpostAWSPayload struct
-type DeleteOutpostAWSPayload struct {
+// DeleteOutpostPayload struct
+type DeleteOutpostPayload struct {
 	Stub string `json:"_stub,omitempty"`
 }
 
-// UpdateOutpostAWSInput struct
-type UpdateOutpostAWSInput struct {
-	ID    string                `json:"id"`
-	Patch UpdateOutpostAWSPatch `json:"patch"`
+// UpdateOutpostInput struct
+type UpdateOutpostInput struct {
+	ID    string             `json:"id"`
+	Patch UpdateOutpostPatch `json:"patch"`
 }
 
-// UpdateOutpostAWSPatch struct
-type UpdateOutpostAWSPatch struct {
+// UpdateOutpostPatch struct
+type UpdateOutpostPatch struct {
 	Query   json.RawMessage `json:"query,omitempty"`
 	Enabled *bool           `json:"enabled,omitempty"`
 	Name    string          `json:"name,omitempty"`
 }
 
-// UpdateOutpostAWSPayload struct
-type UpdateOutpostAWSPayload struct {
-	OutpostAWS OutpostAWS `json:"outpostAWS,omitempty"`
+// UpdateOutpostPayload struct
+type UpdateOutpostPayload struct {
+	Outpost Outpost `json:"outpost,omitempty"`
 }
