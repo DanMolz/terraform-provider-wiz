@@ -1,9 +1,5 @@
 package wiz
 
-import (
-	"encoding/json"
-)
-
 // Outpost struct
 type Outpost struct {
 	ID                     string               `json:"id"`
@@ -140,9 +136,12 @@ type UpdateOutpostInput struct {
 
 // UpdateOutpostPatch struct
 type UpdateOutpostPatch struct {
-	Query   json.RawMessage `json:"query,omitempty"`
-	Enabled *bool           `json:"enabled,omitempty"`
-	Name    string          `json:"name,omitempty"`
+	Enabled           *bool    `json:"enabled,omitempty"`
+	Name              string   `json:"name,omitempty"`
+	StateBucketName   string   `json:"stateBucketName,omitempty"`
+	DisableNatGateway *bool    `json:"disableNatGateway,omitempty"`
+	AllowedRegions    []string `json:"allowedRegions,omitempty"`
+	ResultsBucketName string   `json:"resultsBucketName,omitempty"`
 }
 
 // UpdateOutpostPayload struct

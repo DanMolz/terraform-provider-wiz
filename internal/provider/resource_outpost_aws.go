@@ -486,6 +486,18 @@ func resourceWizOutpostAWSUpdate(ctx context.Context, d *schema.ResourceData, m 
 	if d.HasChange("name") {
 		vars.Patch.Name = d.Get("name").(string)
 	}
+	if d.HasChange("configuration_bucket_name") {
+		vars.Patch.StateBucketName = d.Get("configuration_bucket_name").(string)
+	}
+	if d.HasChange("disable_nat_gateway") {
+		vars.Patch.DisableNatGateway = utils.ConvertBoolToPointer(d.Get("enabled").(bool))
+	}
+	if d.HasChange("allowed_regions") {
+		vars.Patch.AllowedRegions = utils.ConvertListToString(d.Get("allowed_regions").([]interface{}))
+	}
+	if d.HasChange("results_bucket_name") {
+		vars.Patch.ResultsBucketName = d.Get("results_bucket_name").(string)
+	}
 
 	// process the request
 	data := &UpdateOutpost{}
